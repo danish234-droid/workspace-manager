@@ -4,6 +4,7 @@ import { MOCK_USERS, MOCK_CREDENTIALS } from '@/lib/mockData';
 import { getFromStorage, setToStorage, removeFromStorage, STORAGE_KEYS } from '@/utils/persistence';
 import { generateId } from '@/utils/id';
 import { nowISO } from '@/utils/date';
+import { setAuthToken, removeAuthToken } from '@/lib/api';
 
 interface AuthState {
   currentUser: User | null;
@@ -11,26 +12,68 @@ interface AuthState {
   users: User[];
   isAuthenticated: boolean;
   loginError: string | null;
+  isLoading: boolean;
 }
 
 function loadInitialState(): AuthState {
   const session = getFromStorage<AuthSession | null>(STORAGE_KEYS.AUTH_SESSION, null);
   const users = getFromStorage<User[]>(STORAGE_KEYS.USERS, MOCK_USERS);
-  let currentUser: User | null = null;
+  let currentUser = getFromStorage<User | null>('wm_current_user', null);
   let isAuthenticated = false;
 
   if (session) {
-    currentUser = users.find(u => u.id === session.userId) ?? null;
+    if (!currentUser) {
+      currentUser = users.find(u => u.id === session.userId) ?? users[0] ?? null;
+    }
     isAuthenticated = !!currentUser;
   }
 
-  return { currentUser, session, users, isAuthenticated, loginError: null };
+  return { currentUser, session, users, isAuthenticated, loginError: null, isLoading: false };
 }
 
 const authSlice = createSlice({
   name: 'auth',
   initialState: loadInitialState(),
   reducers: {
+    setAuthSession(
+      state,
+      action: PayloadAction<{ user: User; token: string }>
+    ) {
+      const { user, token } = action.payload;
+      const session: AuthSession = {
+        userId: user.id,
+        token,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      };
+
+      state.currentUser = user;
+      state.session = session;
+      state.isAuthenticated = true;
+      state.loginError = null;
+      state.isLoading = false;
+
+      setToStorage(STORAGE_KEYS.AUTH_SESSION, session);
+      setToStorage('wm_current_user', user);
+      setAuthToken(token);
+
+      const existsIdx = state.users.findIndex(u => u.id === user.id || u.email === user.email);
+      if (existsIdx >= 0) {
+        state.users[existsIdx] = user;
+      } else {
+        state.users.push(user);
+      }
+      setToStorage(STORAGE_KEYS.USERS, state.users);
+    },
+
+    setLoginError(state, action: PayloadAction<string>) {
+      state.loginError = action.payload;
+      state.isLoading = false;
+    },
+
+    setLoading(state, action: PayloadAction<boolean>) {
+      state.isLoading = action.payload;
+    },
+
     login(state, action: PayloadAction<{ email: string; password: string }>) {
       const { email, password } = action.payload;
       const correctPassword = MOCK_CREDENTIALS[email];
@@ -46,9 +89,10 @@ const authSlice = createSlice({
         return;
       }
 
+      const token = generateId('tok');
       const session: AuthSession = {
         userId: user.id,
-        token: generateId('tok'),
+        token,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       };
 
@@ -57,6 +101,8 @@ const authSlice = createSlice({
       state.isAuthenticated = true;
       state.loginError = null;
       setToStorage(STORAGE_KEYS.AUTH_SESSION, session);
+      setToStorage('wm_current_user', user);
+      setAuthToken(token);
     },
 
     signup(state, action: PayloadAction<{ name: string; email: string; password: string }>) {
@@ -77,13 +123,12 @@ const authSlice = createSlice({
       };
 
       state.users.push(newUser);
-
-      // Store password in credentials (mock)
       (MOCK_CREDENTIALS as Record<string, string>)[email] = password;
 
+      const token = generateId('tok');
       const session: AuthSession = {
         userId: newUser.id,
-        token: generateId('tok'),
+        token,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       };
 
@@ -93,6 +138,7 @@ const authSlice = createSlice({
       state.loginError = null;
       setToStorage(STORAGE_KEYS.AUTH_SESSION, session);
       setToStorage(STORAGE_KEYS.USERS, state.users);
+      setAuthToken(token);
     },
 
     logout(state) {
@@ -101,6 +147,8 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       state.loginError = null;
       removeFromStorage(STORAGE_KEYS.AUTH_SESSION);
+      removeFromStorage('wm_current_user');
+      removeAuthToken();
     },
 
     updateProfile(state, action: PayloadAction<{ name?: string; email?: string; avatarUrl?: string }>) {
@@ -120,9 +168,10 @@ const authSlice = createSlice({
       const user = state.users.find(u => u.id === action.payload);
       if (!user) return;
 
+      const token = generateId('tok');
       const session: AuthSession = {
         userId: user.id,
-        token: generateId('tok'),
+        token,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       };
 
@@ -131,6 +180,8 @@ const authSlice = createSlice({
       state.isAuthenticated = true;
       state.loginError = null;
       setToStorage(STORAGE_KEYS.AUTH_SESSION, session);
+      setToStorage('wm_current_user', user);
+      setAuthToken(token);
     },
 
     clearLoginError(state) {
@@ -144,10 +195,23 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       state.loginError = null;
       removeFromStorage(STORAGE_KEYS.AUTH_SESSION);
+      removeAuthToken();
       setToStorage(STORAGE_KEYS.USERS, MOCK_USERS);
     },
   },
 });
 
-export const { login, signup, logout, updateProfile, switchUser, clearLoginError, resetAuth } = authSlice.actions;
+export const {
+  setAuthSession,
+  setLoginError,
+  setLoading,
+  login,
+  signup,
+  logout,
+  updateProfile,
+  switchUser,
+  clearLoginError,
+  resetAuth,
+} = authSlice.actions;
+
 export default authSlice.reducer;

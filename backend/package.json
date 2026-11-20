@@ -1,0 +1,32 @@
+{
+  "name": "workspace-manager-backend",
+  "version": "1.0.0",
+  "description": "Production-ready REST API backend for Workspace Manager with MongoDB, JWT Auth & Mongoose",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "seed": "tsx src/scripts/seed.ts"
+  },
+  "keywords": ["workspace", "mongodb", "express", "jwt", "rest-api", "mongoose"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^9.12.2"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.9",
+    "@types/node": "^20.19.43",
+    "tsx": "^4.19.3",
+    "typescript": "^5.9.3"
+  }
+}

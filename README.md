@@ -2,6 +2,9 @@
 
 A production-ready, full-stack Workspace & Project Management platform featuring Kanban boards, task scheduling, calendars, real-time collaboration, team roles, and secure MongoDB persistence.
 
+- **Live Backend API**: [https://workspace-manager-mtef.onrender.com](https://workspace-manager-mtef.onrender.com)
+- **Backend Health Check**: [https://workspace-manager-mtef.onrender.com/api/health](https://workspace-manager-mtef.onrender.com/api/health)
+
 The project is cleanly decoupled into two standalone applications ready for independent development and separate deployment:
 - **`frontend/`**: Next.js 16 (App Router), React 19, Redux Toolkit, Tailwind CSS v4, Lucide Icons.
 - **`backend/`**: Express.js REST API, TypeScript, MongoDB & Mongoose ORM, JWT Authentication, bcrypt password hashing.
